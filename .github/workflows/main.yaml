@@ -1,0 +1,37 @@
+name: Publish azprism
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: '8.0.401'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Install dependencies
+      run: dotnet restore
+
+    - name: Build & Publish
+      run: |
+        dotnet build src/azprism.csproj --no-restore
+    #     dotnet publish ./src/azprism.csproj -c Release -r osx-arm64 -o ~/azprism
+
+    # - name: Upload azprism
+    #   uses: actions/upload-artifact@v4
+    #   with:
+    #     name: azprism
+    #     path: ~/azprism/azprism

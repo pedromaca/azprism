@@ -1,3 +1,5 @@
+[![Build azprism](https://github.com/pedromaca/azprism/actions/workflows/main.yaml/badge.svg)](https://github.com/pedromaca/azprism/actions/workflows/main.yaml)
+
 # Why azprism
 
 **Az**ure **Pri**ncipal **S**ync **M**echanism

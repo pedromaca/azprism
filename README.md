@@ -15,9 +15,7 @@ This problem becomes more complex as we have more target systems which share the
 
 # Solution
 
-```shell
-`azprism` was created to serve on demand needs directly from a terminal. Alternatively, Terraform `azuread_app_role_assignment` could be used to achieve the same result in an IaC manner.
-```
+> `azprism` was created to serve on demand needs directly from a terminal. Alternatively, Terraform `azuread_app_role_assignment` could be used to achieve the same result in an IaC manner.
 
 The solution developed addresses the aforementioned challenges and involves the introduction of a `prism service principal` which acts as a middleman between the `original` and `target` service principals. It relies heavily on [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/use-the-api) and it adheres to the following approach:
 

@@ -49,8 +49,8 @@ This approach has some relevant pre-requisites which are listed below.
 
 # Get Object IDs
 PRISM_SP_ID=$(az ad sp show --id <prism service principal app-id> --query id -o tsv) # prism service principal
-ORIGINAL_SP_ID=$(az ad sp show --id <original-scim-app app-id> --query id -o tsv) # original service principal
-TARGET_SP_ID=$(az ad sp show --id <target-scim-app app-id> --query id -o tsv) # target service principal
+ORIGINAL_SP_ID=$(az ad sp show --id <original-app-id> --query id -o tsv) # original service principal
+TARGET_SP_ID=$(az ad sp show --id <target-app-id> --query id -o tsv) # target service principal
 
 # Add prism service principal as an owner of original-app using Microsoft Graph
 az rest --method POST \

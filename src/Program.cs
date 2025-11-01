@@ -49,6 +49,7 @@ IHost BuildHost() =>
             });
 
             services.AddTransient<RemovePrincipalsService>();
+            services.AddTransient<ResetPrincipalsService>();
             services.AddTransient<AppRoleMappingsService>();
             services.AddTransient<AddPrincipalsService>();
             services.AddTransient<GetAssignmentsService>();
@@ -97,10 +98,21 @@ syncPrincipalsCommand.SetHandler(async (originalId, targetId, dryRun) =>
         await replicateService.ReplicateAppRoleAssignmentsAsync(originalId, targetId, dryRun);
     }, originalIdOption, targetIdOption, dryRunOption);
 
+// Subcommand: reset
+var resetPrincipalsCommand = new Command("reset", "Remove all principals from the target");
+resetPrincipalsCommand.AddOption(targetIdOption);
+resetPrincipalsCommand.AddOption(dryRunOption);
+resetPrincipalsCommand.SetHandler(async (targetId, dryRun) =>
+    {
+        var resetService = host.Services.GetRequiredService<ResetPrincipalsService>();
+        await resetService.ResetPrincipalsAsync(targetId, dryRun);
+    }, targetIdOption, dryRunOption);
+
 // Attach subcommands to principals command
 principalsCommand.AddCommand(addPrincipalsCommand);
 principalsCommand.AddCommand(removePrincipalsCommand);
 principalsCommand.AddCommand(syncPrincipalsCommand);
+principalsCommand.AddCommand(resetPrincipalsCommand);
 
 // App Registration command
 var appRegistrationCommand = new Command("appRegistration", "Manage app registrations");

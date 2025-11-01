@@ -163,3 +163,4 @@ G --> H
     - odataerror when object-ids don't exist for example
 - tests?
 - The CommandLine library is still in preview and is expected to be GA by end of 2025
+- DRY the services, especially Reset and Remove

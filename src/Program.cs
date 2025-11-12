@@ -5,27 +5,6 @@ using Azure.Identity;
 using Microsoft.Graph;
 using azprism.Services;
 
-// CLI Flags
-var originalIdOption = new Option<Guid>(
-    name: "--original-id",
-    description: "The original object ID to sync from")
-    { IsRequired = true };
-
-var targetIdOption = new Option<Guid>(
-    name: "--target-id",
-    description: "The target object ID to sync to")
-    { IsRequired = true };
-
-var displayNameOption = new Option<string>(
-        name: "--display-name",
-        description: "The display name for the app registration")
-    { IsRequired = true, ArgumentHelpName = "App Registration Display Name" };
-
-var dryRunOption = new Option<bool>(
-    name: "--dry-run",
-    description: "Perform a dry run without making changes")
-    { IsRequired = false, ArgumentHelpName = "false" };
-
 // Host builder function
 IHost BuildHost() =>
     Host.CreateDefaultBuilder(args)
@@ -48,91 +27,119 @@ IHost BuildHost() =>
                 }
             });
 
-            services.AddTransient<RemovePrincipalsService>();
-            services.AddTransient<ResetPrincipalsService>();
-            services.AddTransient<AppRoleMappingsService>();
-            services.AddTransient<AddPrincipalsService>();
-            services.AddTransient<GetAssignmentsService>();
-            services.AddTransient<ReplicateAppRoleAssignmentsService>();
-            services.AddTransient<CreateAppRegistrationService>();
             services.AddLogging();
+            services.AddTransient<GetAssignmentsService>();
+            services.AddTransient<AppRoleMappingsService>();
+            services.AddTransient<RemovePrincipalsService>();
+            services.AddTransient<AddPrincipalsService>();
+            services.AddTransient<ReplicateAppRoleAssignmentsService>();
+            services.AddTransient<ResetPrincipalsService>();
+            services.AddTransient<CreateAppRegistrationService>();
         })
         .Build();
 
 var host = BuildHost();
 
-// Command definitions
-// Parent command: principals
-var principalsCommand = new Command("principals", "Manage principal assignments across origin/target objects");
+var rootCommand = new RootCommand("Azure Principal Sync Mechanism (Azprism)");
 
-// Subcommand: add
-var addPrincipalsCommand = new Command("add", "Add missing principals from original to target");
-addPrincipalsCommand.AddOption(originalIdOption);
-addPrincipalsCommand.AddOption(targetIdOption);
-addPrincipalsCommand.AddOption(dryRunOption);
-addPrincipalsCommand.SetHandler(async (originalId, targetId, dryRun) =>
-    {
-        var addService = host.Services.GetRequiredService<AddPrincipalsService>();
-        await addService.AddPrincipalsAsync(originalId, targetId, dryRun);
-    }, originalIdOption, targetIdOption, dryRunOption);
+var principalsCommand = new Command("principals", "Manage principal assignments");
+var principalsAddCommand = new Command("add", "Add missing principals from original to target");
+var principalsRemoveCommand = new Command("remove", "Remove principals from target which are not in original");
+var principalsSyncCommand = new Command("sync", "Synchronize adds missing principals from original to target and removes principals from target which are not in original");
+var principalsResetCommand = new Command("reset", "Remove all principals from the target");
 
-// Subcommand: remove
-var removePrincipalsCommand = new Command("remove", "Remove principals from target which are not in original");
-removePrincipalsCommand.AddOption(originalIdOption);
-removePrincipalsCommand.AddOption(targetIdOption);
-removePrincipalsCommand.AddOption(dryRunOption);
-removePrincipalsCommand.SetHandler(async (originalId, targetId, dryRun) =>
-    {
-        var removeService = host.Services.GetRequiredService<RemovePrincipalsService>();
-        await removeService.RemovePrincipalsAsync(originalId, targetId, dryRun);
-    }, originalIdOption, targetIdOption, dryRunOption);
+// CLI Flags
+var originalIdOption = new Option<Guid>("--original-id") {
+    Description = "The original object ID to sync from", 
+    Required = true 
+};
 
-// Subcommand: sync
-var syncPrincipalsCommand = new Command("sync", "Synchronize adds missing principals from original to target and removes principals from target which are not in original");
-syncPrincipalsCommand.AddOption(originalIdOption);
-syncPrincipalsCommand.AddOption(targetIdOption);
-syncPrincipalsCommand.AddOption(dryRunOption);
-syncPrincipalsCommand.SetHandler(async (originalId, targetId, dryRun) =>
-    {
-        var replicateService = host.Services.GetRequiredService<ReplicateAppRoleAssignmentsService>();
-        await replicateService.ReplicateAppRoleAssignmentsAsync(originalId, targetId, dryRun);
-    }, originalIdOption, targetIdOption, dryRunOption);
+var targetIdOption = new Option<Guid>("--target-id") {
+    Description = "The target object ID to sync to",
+    Required = true 
+};
+    
+var displayNameOption = new Option<string>("--display-name") {
+    Description = "The display name for the app registration",
+    Required = true
+};
+    
+var dryRunOption = new Option<bool>("--dry-run") {
+    Description = "Perform a dry run without making changes",
+    Required = false,
+    DefaultValueFactory = _ => false
+};
 
-// Subcommand: reset
-var resetPrincipalsCommand = new Command("reset", "Remove all principals from the target");
-resetPrincipalsCommand.AddOption(targetIdOption);
-resetPrincipalsCommand.AddOption(dryRunOption);
-resetPrincipalsCommand.SetHandler(async (targetId, dryRun) =>
-    {
-        var resetService = host.Services.GetRequiredService<ResetPrincipalsService>();
-        await resetService.ResetPrincipalsAsync(targetId, dryRun);
-    }, targetIdOption, dryRunOption);
+// PrincipalsAddCommand
+principalsAddCommand.Options.Add(originalIdOption);
+principalsAddCommand.Options.Add(targetIdOption);
+principalsAddCommand.Options.Add(dryRunOption);
+principalsCommand.Subcommands.Add(principalsAddCommand);
+principalsAddCommand.SetAction(async parseResult => {
+    var addService = host.Services.GetRequiredService<AddPrincipalsService>();
+    await addService.AddPrincipalsAsync(
+        parseResult.GetValue(originalIdOption),
+        parseResult.GetValue(targetIdOption),
+        parseResult.GetValue(dryRunOption)
+    );
+});
 
-// Attach subcommands to principals command
-principalsCommand.AddCommand(addPrincipalsCommand);
-principalsCommand.AddCommand(removePrincipalsCommand);
-principalsCommand.AddCommand(syncPrincipalsCommand);
-principalsCommand.AddCommand(resetPrincipalsCommand);
+// PrincipalsRemoveCommand options
+principalsRemoveCommand.Options.Add(originalIdOption);
+principalsRemoveCommand.Options.Add(targetIdOption);
+principalsRemoveCommand.Options.Add(dryRunOption);
+principalsCommand.Subcommands.Add(principalsRemoveCommand);
+principalsRemoveCommand.SetAction(async parseResult => {
+    var removeService = host.Services.GetRequiredService<RemovePrincipalsService>();
+    await removeService.RemovePrincipalsAsync(
+        parseResult.GetValue(originalIdOption),
+        parseResult.GetValue(targetIdOption),
+        parseResult.GetValue(dryRunOption)
+    );
+});
 
-// App Registration command
+// PrincipalsSyncCommand options
+principalsSyncCommand.Options.Add(originalIdOption);
+principalsSyncCommand.Options.Add(targetIdOption);
+principalsSyncCommand.Options.Add(dryRunOption);
+principalsCommand.Subcommands.Add(principalsSyncCommand);
+principalsSyncCommand.SetAction(async parseResult => {
+    var replicateService = host.Services.GetRequiredService<ReplicateAppRoleAssignmentsService>();
+    await replicateService.ReplicateAppRoleAssignmentsAsync(
+        parseResult.GetValue(originalIdOption),
+        parseResult.GetValue(targetIdOption),
+        parseResult.GetValue(dryRunOption)
+    );
+});
+
+// PrincipalsResetCommand options
+principalsResetCommand.Options.Add(targetIdOption);
+principalsResetCommand.Options.Add(dryRunOption);
+principalsCommand.Subcommands.Add(principalsResetCommand);
+principalsResetCommand.SetAction(async parseResult => {
+    var resetService = host.Services.GetRequiredService<ResetPrincipalsService>();
+    await resetService.ResetPrincipalsAsync(
+        parseResult.GetValue(targetIdOption),
+        parseResult.GetValue(dryRunOption)
+    );
+});
+
+// appRegistrationCommand
 var appRegistrationCommand = new Command("appRegistration", "Manage app registrations");
+var appRegistrationCreateCommand = new Command("create", "Create a new app registration with the specified display name");
+appRegistrationCreateCommand.Options.Add(displayNameOption);
+appRegistrationCreateCommand.Options.Add(dryRunOption);
+appRegistrationCommand.Subcommands.Add(appRegistrationCreateCommand);
+appRegistrationCreateCommand.SetAction(async parseResult => {
+    var createService = host.Services.GetRequiredService<CreateAppRegistrationService>();
+    await createService.CreateAppRegistrationAsync(
+        parseResult.GetValue(displayNameOption) ?? throw new ArgumentException("Display name is required"),
+        parseResult.GetValue(dryRunOption)
+    );
+});
 
-// Subcommand: create
-var createAppRegistrationCommand = new Command("create", "Create a new app registration with the specified display name");
-createAppRegistrationCommand.AddOption(displayNameOption);
-createAppRegistrationCommand.AddOption(dryRunOption);
-createAppRegistrationCommand.SetHandler(async (displayName, dryRun) =>
-    {
-        var createService = host.Services.GetRequiredService<CreateAppRegistrationService>();
-        await createService.CreateAppRegistrationAsync(displayName, dryRun);
-    }, displayNameOption, dryRunOption);
+// Attach subcommands to root command
+rootCommand.Subcommands.Add(principalsCommand);
+rootCommand.Subcommands.Add(appRegistrationCommand);
 
-// Attach subcommands to appRegistration command
-appRegistrationCommand.AddCommand(createAppRegistrationCommand);
-
-// Root command
-var rootCommand = new RootCommand("Azure PRiSM Tool");
-rootCommand.AddCommand(principalsCommand);
-rootCommand.AddCommand(appRegistrationCommand);
-
-return await rootCommand.InvokeAsync(args);
+return await rootCommand.Parse(args).InvokeAsync();

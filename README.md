@@ -83,7 +83,7 @@ Note that the Ids used in the POST requests are Object Ids of the corresponding 
 
 # Example
 
-0. Have .NET 8 installed
+0. Have .NET 10 installed
 
 1. Clone the repository
     ```shell
@@ -162,5 +162,4 @@ G --> H
 - Improve exception handling
     - odataerror when object-ids don't exist for example
 - tests?
-- The CommandLine library is still in preview and is expected to be GA by end of 2025
 - DRY the services, especially Reset and Remove

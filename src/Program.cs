@@ -5,26 +5,28 @@ using Azure.Identity;
 using Microsoft.Graph;
 using azprism.Services;
 
+var missing = new List<string>();
+if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TENANT_ID"))) missing.Add("TENANT_ID");
+if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CLIENT_ID"))) missing.Add("CLIENT_ID");
+if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CLIENT_SECRET"))) missing.Add("CLIENT_SECRET");
+
+if (missing.Count > 0) { 
+	Console.Error.WriteLine("Missing required environment variables: " + string.Join(", ", missing)); 
+	return 1;
+};
+
 // Host builder function
 IHost BuildHost() =>
     Host.CreateDefaultBuilder(args)
         .ConfigureServices((services) =>
         {
             services.AddSingleton(_ => {
-                var tenantId = GetRequiredEnvVar("TENANT_ID");
-                var clientId = GetRequiredEnvVar("CLIENT_ID");
-                var clientSecret = GetRequiredEnvVar("CLIENT_SECRET");
+                var tenantId = Environment.GetEnvironmentVariable("TENANT_ID");
+                var clientId = Environment.GetEnvironmentVariable("CLIENT_ID");
+                var clientSecret = Environment.GetEnvironmentVariable("CLIENT_SECRET");
                 var credentials = new ClientSecretCredential(tenantId, clientId, clientSecret);
                 string[] scopes = ["https://graph.microsoft.com/.default"];
                 return new GraphServiceClient(credentials, scopes);
-
-                string GetRequiredEnvVar(string name)
-                {
-                    var value = Environment.GetEnvironmentVariable(name);
-                    if (string.IsNullOrEmpty(value))
-                        throw new ArgumentException($"Required environment variable '{name}' is not defined or empty.");
-                    return value;
-                }
             });
 
             services.AddLogging();
@@ -142,4 +144,14 @@ appRegistrationCreateCommand.SetAction(async parseResult => {
 rootCommand.Subcommands.Add(principalsCommand);
 rootCommand.Subcommands.Add(appRegistrationCommand);
 
-return await rootCommand.Parse(args).InvokeAsync();
+// start host so logging providers are active
+await host.StartAsync();
+
+// run the command
+var exitCode = await rootCommand.Parse(args).InvokeAsync();
+
+// stop host (this lets logging providers flush) and dispose
+await host.StopAsync();
+await host.WaitForShutdownAsync();
+
+return exitCode;

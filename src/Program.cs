@@ -1,8 +1,9 @@
+using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.CommandLine;
-using Azure.Identity;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
+using Azure.Identity;
 using azprism.Services;
 
 var missing = new List<string>();
@@ -29,10 +30,16 @@ IHost BuildHost() =>
                 return new GraphServiceClient(credentials, scopes);
             });
 
-            services.AddLogging();
-            services.AddTransient<GetAssignmentsService>();
-            services.AddTransient<AppRoleMappingsService>();
-            services.AddTransient<RemovePrincipalsService>();
+            services.AddLogging(options => 
+                options.AddSimpleConsole(s => {
+                    s.UseUtcTimestamp = true;
+                    s.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ";
+                    s.SingleLine = true;
+                }));
+            services.AddTransient<IGraphClientWrapper, GraphClientWrapper>();
+            services.AddTransient<ComparePrincipalsService>();
+            services.AddTransient<AppRoleAssignmentBuilderService>();
+            services.AddTransient<RemoveExtraPrincipalsService>();
             services.AddTransient<AddPrincipalsService>();
             services.AddTransient<ReplicateAppRoleAssignmentsService>();
             services.AddTransient<ResetPrincipalsService>();
@@ -92,8 +99,8 @@ principalsRemoveCommand.Options.Add(targetIdOption);
 principalsRemoveCommand.Options.Add(dryRunOption);
 principalsCommand.Subcommands.Add(principalsRemoveCommand);
 principalsRemoveCommand.SetAction(async parseResult => {
-    var removeService = host.Services.GetRequiredService<RemovePrincipalsService>();
-    await removeService.RemovePrincipalsAsync(
+    var removeService = host.Services.GetRequiredService<RemoveExtraPrincipalsService>();
+    await removeService.RemoveExtraPrincipalsAsync(
         parseResult.GetValue(originalIdOption),
         parseResult.GetValue(targetIdOption),
         parseResult.GetValue(dryRunOption)

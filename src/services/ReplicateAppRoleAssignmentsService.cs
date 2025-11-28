@@ -8,16 +8,16 @@ public class ReplicateAppRoleAssignmentsService
 {
     private readonly ILogger<ReplicateAppRoleAssignmentsService> _logger;
     private readonly AddPrincipalsService _addPrincipalsService;
-    private readonly RemovePrincipalsService _removePrincipalsService;
+    private readonly RemoveExtraPrincipalsService _removeExtraPrincipalsService;
 
     public ReplicateAppRoleAssignmentsService(
         ILogger<ReplicateAppRoleAssignmentsService> logger,
         AddPrincipalsService addPrincipalsService,
-        RemovePrincipalsService removePrincipalsService)
+        RemoveExtraPrincipalsService removeExtraPrincipalsService)
     {
         _logger = logger;
         _addPrincipalsService = addPrincipalsService;
-        _removePrincipalsService = removePrincipalsService;
+        _removeExtraPrincipalsService = removeExtraPrincipalsService;
     }
 
     /// <summary>
@@ -30,16 +30,11 @@ public class ReplicateAppRoleAssignmentsService
         try
         {
             await _addPrincipalsService.AddPrincipalsAsync(originalObjectId, targetObjectId, dryRun);
-            await _removePrincipalsService.RemovePrincipalsAsync(originalObjectId, targetObjectId, dryRun);
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError("{Timestamp} - Configuration error: {ErrorMessage}", DateTime.UtcNow, ex.Message);
-            throw;
+            await _removeExtraPrincipalsService.RemoveExtraPrincipalsAsync(originalObjectId, targetObjectId, dryRun);
         }
         catch (ODataError odataError) when (odataError.ResponseStatusCode == (int)HttpStatusCode.Forbidden)
         {
-            _logger.LogError("{Timestamp} - Service principal does not have the required API permissions: {ErrorMessage}", DateTime.UtcNow, odataError.Error?.Message);
+            _logger.LogError($"Service principal does not have the required API permissions: {odataError.Error?.Message}");
         }
     }
 }

@@ -1,20 +1,17 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Graph;
 using Microsoft.Graph.Models;
 
 namespace azprism.Services;
 
 public class ResetPrincipalsService
 {
-    private readonly GraphServiceClient _graphServiceClient;
+    private readonly IGraphClientWrapper _graphClientWrapper;
     private readonly ILogger<ResetPrincipalsService> _logger;
-    private readonly GetAssignmentsService _getAssignmentsService;
 
-    public ResetPrincipalsService(GraphServiceClient graphServiceClient, ILogger<ResetPrincipalsService> logger, GetAssignmentsService getAssignmentsService)
+    public ResetPrincipalsService(IGraphClientWrapper graphClientWrapper, ILogger<ResetPrincipalsService> logger)
     {
-        _graphServiceClient = graphServiceClient;
+        _graphClientWrapper = graphClientWrapper;
         _logger = logger;
-        _getAssignmentsService = getAssignmentsService;
     }
 
     /// <summary>
@@ -22,45 +19,19 @@ public class ResetPrincipalsService
     /// </summary>
     public async Task ResetPrincipalsAsync(Guid targetObjectId, bool dryRun = false)
     {
-        var targetAssignments = await _getAssignmentsService.GetAllAssignmentsAsync(targetObjectId);
-
-        if (targetAssignments == null)
-        {
-            _logger.LogError("{Timestamp} - Failed to fetch assignments for target {TargetObjectId}", DateTime.UtcNow, targetObjectId);
-            return;
-        }
+        var targetAssignments = await _graphClientWrapper.GetAllAssignmentsAsync(targetObjectId) ?? new List<AppRoleAssignment>();
 
         if (targetAssignments.Count == 0)
         {
-            _logger.LogInformation("There are no principals to remove from target {TargetObjectId}.", targetObjectId);
+            _logger.LogInformation($"There are no principals to remove from target {targetObjectId}.");
             return;
         }
 
-        _logger.LogInformation("{Prefix}azprism will remove {PrincipalCount} principals from target {TargetObjectId}.",
-            dryRun ? "[DRY RUN] " : "", targetAssignments.Count, targetObjectId);
+        _logger.LogInformation($"{(dryRun ? "[DRY RUN] " : "")}azprism will remove {targetAssignments.Count} principals from target {targetObjectId}.");
 
+        if (dryRun) return;
+        
         // Remove all principals from the target
-        if (!dryRun)
-        {
-            await Parallel.ForEachAsync(targetAssignments,
-                new ParallelOptions { MaxDegreeOfParallelism = 10 },
-                async (assignment, token) =>
-                {
-                    try
-                    {
-                        await _graphServiceClient.ServicePrincipals[targetObjectId.ToString()].AppRoleAssignedTo[assignment.Id]
-                            .DeleteAsync(cancellationToken: token);
-
-                        _logger.LogInformation("{Timestamp} - Principal {PrincipalDisplayName} removed from target",
-                            DateTime.UtcNow, assignment.PrincipalDisplayName);
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogError(
-                            "{Timestamp} - Exception removing principal {PrincipalDisplayName} from target {TargetObjectId}: {ErrorMessage}",
-                            DateTime.UtcNow, assignment.PrincipalDisplayName, targetObjectId, e.Message);
-                    }
-                });
-        }
+        await _graphClientWrapper.RemoveAppRoleAssignmentsAsync(targetAssignments, targetObjectId);
     }
 }

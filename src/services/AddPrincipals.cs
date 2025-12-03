@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace azprism.Services;
 
-public class AddPrincipalsService
+public class AddPrincipalsService : IAddPrincipalsService
 {
     private readonly ILogger<AddPrincipalsService> _logger;
     private readonly IGraphClientWrapper _graphClientWrapper;

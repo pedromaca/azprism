@@ -96,13 +96,13 @@ public class GraphClientWrapper : IGraphClientWrapper
     /// Otherwise, builds an AppRoleIds dictionary which contemplates how the Ids on the original are reflected on the target.
     /// e.g.: [Original AppRole "User" Guid: Target AppRole "User" Guid]
     /// </summary>
-    public async Task<Dictionary<Guid, Guid>> AppRoleAssignmentMappingAsync(string originalObjectId, string targetObjectId)
+    public async Task<Dictionary<Guid, Guid>> AppRoleAssignmentMappingAsync(Guid originalObjectId, Guid targetObjectId)
     {
         try
         {
             // Fetch both service principals
-            var originalPrincipal = await _graphServiceClient.ServicePrincipals[originalObjectId].GetAsync();
-            var targetPrincipal = await _graphServiceClient.ServicePrincipals[targetObjectId].GetAsync();
+            var originalPrincipal = await _graphServiceClient.ServicePrincipals[originalObjectId.ToString()].GetAsync();
+            var targetPrincipal = await _graphServiceClient.ServicePrincipals[targetObjectId.ToString()].GetAsync();
     
             var appRoleIdMappings = new Dictionary<Guid, Guid>();
 

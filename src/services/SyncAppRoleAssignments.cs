@@ -4,20 +4,20 @@ using Microsoft.Graph.Models.ODataErrors;
 
 namespace azprism.Services;
 
-public class ReplicateAppRoleAssignmentsService
+public class SyncAppRoleAssignmentsService
 {
-    private readonly ILogger<ReplicateAppRoleAssignmentsService> _logger;
+    private readonly ILogger<SyncAppRoleAssignmentsService> _logger;
     private readonly AddPrincipalsService _addPrincipalsService;
-    private readonly RemoveExtraPrincipalsService _removeExtraPrincipalsService;
+    private readonly RemoveRedundantPrincipalsService _removeRedundantPrincipalsService;
 
-    public ReplicateAppRoleAssignmentsService(
-        ILogger<ReplicateAppRoleAssignmentsService> logger,
+    public SyncAppRoleAssignmentsService(
+        ILogger<SyncAppRoleAssignmentsService> logger,
         AddPrincipalsService addPrincipalsService,
-        RemoveExtraPrincipalsService removeExtraPrincipalsService)
+        RemoveRedundantPrincipalsService removeRedundantPrincipalsService)
     {
         _logger = logger;
         _addPrincipalsService = addPrincipalsService;
-        _removeExtraPrincipalsService = removeExtraPrincipalsService;
+        _removeRedundantPrincipalsService = removeRedundantPrincipalsService;
     }
 
     /// <summary>
@@ -25,12 +25,12 @@ public class ReplicateAppRoleAssignmentsService
     /// It fetches the AppRole assignments of a service principal and attempts to assign them to a target service principal.
     /// If the AppRole assignment is not in the original service principal it gets removed from the target service principals.
     /// </summary>
-    public async Task ReplicateAppRoleAssignmentsAsync(Guid originalObjectId, Guid targetObjectId, bool dryRun = false)
+    public async Task SyncAppRoleAssignmentsAsync(Guid originalObjectId, Guid targetObjectId, bool dryRun = false)
     {
         try
         {
             await _addPrincipalsService.AddPrincipalsAsync(originalObjectId, targetObjectId, dryRun);
-            await _removeExtraPrincipalsService.RemoveExtraPrincipalsAsync(originalObjectId, targetObjectId, dryRun);
+            await _removeRedundantPrincipalsService.RemoveRedundantPrincipalsAsync(originalObjectId, targetObjectId, dryRun);
         }
         catch (ODataError odataError) when (odataError.ResponseStatusCode == (int)HttpStatusCode.Forbidden)
         {

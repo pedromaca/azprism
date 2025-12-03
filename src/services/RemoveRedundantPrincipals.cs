@@ -2,13 +2,13 @@ using Microsoft.Extensions.Logging;
 
 namespace azprism.Services;
 
-public class RemoveExtraPrincipalsService
+public class RemoveRedundantPrincipalsService : IRemoveRedundantPrincipalsService
 {
-    private readonly ILogger<RemoveExtraPrincipalsService> _logger;
+    private readonly ILogger<RemoveRedundantPrincipalsService> _logger;
     private readonly IGraphClientWrapper _graphClientWrapper;
     private readonly ComparePrincipalsService _comparePrincipalsService;
 
-    public RemoveExtraPrincipalsService(ILogger<RemoveExtraPrincipalsService> logger, IGraphClientWrapper graphClientWrapper, ComparePrincipalsService comparePrincipalsService)
+    public RemoveRedundantPrincipalsService(ILogger<RemoveRedundantPrincipalsService> logger, IGraphClientWrapper graphClientWrapper, ComparePrincipalsService comparePrincipalsService)
     {
         _logger = logger;
         _graphClientWrapper = graphClientWrapper;
@@ -18,7 +18,7 @@ public class RemoveExtraPrincipalsService
     /// <summary>
     /// Removes the specified principals from the target service principal.
     /// </summary>
-    public async Task RemoveExtraPrincipalsAsync(Guid originalObjectId, Guid targetObjectId, bool dryRun = false)
+    public async Task RemoveRedundantPrincipalsAsync(Guid originalObjectId, Guid targetObjectId, bool dryRun = false)
     {
         // Fetch assignments for both original and target service principals
         var originalAssignments = await _graphClientWrapper.GetAllAssignmentsAsync(originalObjectId);
@@ -30,6 +30,8 @@ public class RemoveExtraPrincipalsService
         _logger.LogInformation($"{(dryRun ? "[DRY RUN] " : "")}azprism will remove {principalsToRemove.Count} principals.");
 
         if (dryRun) return;
+
+        if (principalsToRemove.Count == 0) return;
 
         // Remove the extra principals
         await _graphClientWrapper.RemoveAppRoleAssignmentsAsync(principalsToRemove, targetObjectId);

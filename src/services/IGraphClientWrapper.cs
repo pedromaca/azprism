@@ -6,6 +6,6 @@ public interface IGraphClientWrapper
 {
     Task AddAppRoleAssignmentsAsync(List<AppRoleAssignment> appRoleAssignments, Guid targetObjectId);
     Task RemoveAppRoleAssignmentsAsync(List<AppRoleAssignment> appRoleAssignments, Guid targetObjectId);
-    Task<Dictionary<Guid, Guid>> AppRoleAssignmentMappingAsync(string originalObjectId, string targetObjectId);
+    Task<Dictionary<Guid, Guid>> AppRoleAssignmentMappingAsync(Guid originalObjectId, Guid targetObjectId);
     Task<List<AppRoleAssignment>> GetAllAssignmentsAsync(Guid objectId);
 }

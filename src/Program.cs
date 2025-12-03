@@ -1,8 +1,9 @@
+using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.CommandLine;
-using Azure.Identity;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
+using Azure.Identity;
 using azprism.Services;
 
 var missing = new List<string>();
@@ -29,12 +30,18 @@ IHost BuildHost() =>
                 return new GraphServiceClient(credentials, scopes);
             });
 
-            services.AddLogging();
-            services.AddTransient<GetAssignmentsService>();
-            services.AddTransient<AppRoleMappingsService>();
-            services.AddTransient<RemovePrincipalsService>();
+            services.AddLogging(options => 
+                options.AddSimpleConsole(s => {
+                    s.UseUtcTimestamp = true;
+                    s.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ";
+                    s.SingleLine = true;
+                }));
+            services.AddSingleton<IGraphClientWrapper, GraphClientWrapper>();
+            services.AddTransient<ComparePrincipalsService>();
+            services.AddTransient<AppRoleAssignmentBuilderService>();
+            services.AddTransient<RemoveRedundantPrincipalsService>();
             services.AddTransient<AddPrincipalsService>();
-            services.AddTransient<ReplicateAppRoleAssignmentsService>();
+            services.AddTransient<SyncAppRoleAssignmentsService>();
             services.AddTransient<ResetPrincipalsService>();
             services.AddTransient<CreateAppRegistrationService>();
         })
@@ -92,8 +99,8 @@ principalsRemoveCommand.Options.Add(targetIdOption);
 principalsRemoveCommand.Options.Add(dryRunOption);
 principalsCommand.Subcommands.Add(principalsRemoveCommand);
 principalsRemoveCommand.SetAction(async parseResult => {
-    var removeService = host.Services.GetRequiredService<RemovePrincipalsService>();
-    await removeService.RemovePrincipalsAsync(
+    var removeService = host.Services.GetRequiredService<RemoveRedundantPrincipalsService>();
+    await removeService.RemoveRedundantPrincipalsAsync(
         parseResult.GetValue(originalIdOption),
         parseResult.GetValue(targetIdOption),
         parseResult.GetValue(dryRunOption)
@@ -106,8 +113,8 @@ principalsSyncCommand.Options.Add(targetIdOption);
 principalsSyncCommand.Options.Add(dryRunOption);
 principalsCommand.Subcommands.Add(principalsSyncCommand);
 principalsSyncCommand.SetAction(async parseResult => {
-    var replicateService = host.Services.GetRequiredService<ReplicateAppRoleAssignmentsService>();
-    await replicateService.ReplicateAppRoleAssignmentsAsync(
+    var syncService = host.Services.GetRequiredService<SyncAppRoleAssignmentsService>();
+    await syncService.SyncAppRoleAssignmentsAsync(
         parseResult.GetValue(originalIdOption),
         parseResult.GetValue(targetIdOption),
         parseResult.GetValue(dryRunOption)

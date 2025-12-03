@@ -161,5 +161,3 @@ G --> H
 
 - Improve exception handling
     - odataerror when object-ids don't exist for example
-- tests?
-- DRY the services, especially Reset and Remove

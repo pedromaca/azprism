@@ -4,16 +4,16 @@ using Microsoft.Graph.Models.ODataErrors;
 
 namespace azprism.Services;
 
-public class SyncAppRoleAssignmentsService
+public class SyncAppRoleAssignmentsService : ISyncAppRoleAssignmentsService
 {
     private readonly ILogger<SyncAppRoleAssignmentsService> _logger;
-    private readonly AddPrincipalsService _addPrincipalsService;
-    private readonly RemoveRedundantPrincipalsService _removeRedundantPrincipalsService;
+    private readonly IAddPrincipalsService _addPrincipalsService;
+    private readonly IRemoveRedundantPrincipalsService _removeRedundantPrincipalsService;
 
     public SyncAppRoleAssignmentsService(
         ILogger<SyncAppRoleAssignmentsService> logger,
-        AddPrincipalsService addPrincipalsService,
-        RemoveRedundantPrincipalsService removeRedundantPrincipalsService)
+        IAddPrincipalsService addPrincipalsService,
+        IRemoveRedundantPrincipalsService removeRedundantPrincipalsService)
     {
         _logger = logger;
         _addPrincipalsService = addPrincipalsService;

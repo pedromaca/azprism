@@ -3,7 +3,7 @@ using Microsoft.Graph.Models;
 
 namespace azprism.Services;
 
-public class ResetPrincipalsService
+public class ResetPrincipalsService : IResetPrincipalsService
 {
     private readonly IGraphClientWrapper _graphClientWrapper;
     private readonly ILogger<ResetPrincipalsService> _logger;

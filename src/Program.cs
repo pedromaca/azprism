@@ -14,7 +14,9 @@ if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CLIENT_SECRET"
 if (missing.Count > 0) { 
 	Console.Error.WriteLine("Missing required environment variables: " + string.Join(", ", missing)); 
 	return 1;
-};
+}
+
+var clientId = Environment.GetEnvironmentVariable("CLIENT_ID");
 
 // Host builder function
 IHost BuildHost() =>
@@ -23,7 +25,6 @@ IHost BuildHost() =>
         {
             services.AddSingleton(_ => {
                 var tenantId = Environment.GetEnvironmentVariable("TENANT_ID");
-                var clientId = Environment.GetEnvironmentVariable("CLIENT_ID");
                 var clientSecret = Environment.GetEnvironmentVariable("CLIENT_SECRET");
                 var credentials = new ClientSecretCredential(tenantId, clientId, clientSecret);
                 string[] scopes = ["https://graph.microsoft.com/.default"];
@@ -37,12 +38,13 @@ IHost BuildHost() =>
                     s.SingleLine = true;
                 }));
             services.AddSingleton<IGraphClientWrapper, GraphClientWrapper>();
+            services.AddTransient<CheckPermissions>();
             services.AddTransient<ComparePrincipalsService>();
             services.AddTransient<AppRoleAssignmentBuilderService>();
-            services.AddTransient<RemoveRedundantPrincipalsService>();
-            services.AddTransient<AddPrincipalsService>();
-            services.AddTransient<SyncAppRoleAssignmentsService>();
-            services.AddTransient<ResetPrincipalsService>();
+            services.AddTransient<IAddPrincipalsService, AddPrincipalsService>();
+            services.AddTransient<IRemoveRedundantPrincipalsService, RemoveRedundantPrincipalsService>();
+            services.AddTransient<ISyncAppRoleAssignmentsService, SyncAppRoleAssignmentsService>();
+            services.AddTransient<IResetPrincipalsService, ResetPrincipalsService>();
             services.AddTransient<CreateAppRegistrationService>();
         })
         .Build();
@@ -79,13 +81,19 @@ var dryRunOption = new Option<bool>("--dry-run") {
     DefaultValueFactory = _ => false
 };
 
+// Ensure SP has necessary permissions
+var checkPermissionsService = host.Services.GetRequiredService<CheckPermissions>();
+if (string.IsNullOrWhiteSpace(clientId)) return 1; 
+var hasPermissions = await checkPermissionsService.PrincipalHasPermissions(Guid.Parse(clientId));
+
 // PrincipalsAddCommand
 principalsAddCommand.Options.Add(originalIdOption);
 principalsAddCommand.Options.Add(targetIdOption);
 principalsAddCommand.Options.Add(dryRunOption);
 principalsCommand.Subcommands.Add(principalsAddCommand);
 principalsAddCommand.SetAction(async parseResult => {
-    var addService = host.Services.GetRequiredService<AddPrincipalsService>();
+    if (!hasPermissions) return;
+    var addService = host.Services.GetRequiredService<IAddPrincipalsService>();
     await addService.AddPrincipalsAsync(
         parseResult.GetValue(originalIdOption),
         parseResult.GetValue(targetIdOption),
@@ -99,7 +107,8 @@ principalsRemoveCommand.Options.Add(targetIdOption);
 principalsRemoveCommand.Options.Add(dryRunOption);
 principalsCommand.Subcommands.Add(principalsRemoveCommand);
 principalsRemoveCommand.SetAction(async parseResult => {
-    var removeService = host.Services.GetRequiredService<RemoveRedundantPrincipalsService>();
+    if (!hasPermissions) return;
+    var removeService = host.Services.GetRequiredService<IRemoveRedundantPrincipalsService>();
     await removeService.RemoveRedundantPrincipalsAsync(
         parseResult.GetValue(originalIdOption),
         parseResult.GetValue(targetIdOption),
@@ -113,7 +122,8 @@ principalsSyncCommand.Options.Add(targetIdOption);
 principalsSyncCommand.Options.Add(dryRunOption);
 principalsCommand.Subcommands.Add(principalsSyncCommand);
 principalsSyncCommand.SetAction(async parseResult => {
-    var syncService = host.Services.GetRequiredService<SyncAppRoleAssignmentsService>();
+    if (!hasPermissions) return;
+    var syncService = host.Services.GetRequiredService<ISyncAppRoleAssignmentsService>();
     await syncService.SyncAppRoleAssignmentsAsync(
         parseResult.GetValue(originalIdOption),
         parseResult.GetValue(targetIdOption),
@@ -126,7 +136,8 @@ principalsResetCommand.Options.Add(targetIdOption);
 principalsResetCommand.Options.Add(dryRunOption);
 principalsCommand.Subcommands.Add(principalsResetCommand);
 principalsResetCommand.SetAction(async parseResult => {
-    var resetService = host.Services.GetRequiredService<ResetPrincipalsService>();
+    if (!hasPermissions) return;
+    var resetService = host.Services.GetRequiredService<IResetPrincipalsService>();
     await resetService.ResetPrincipalsAsync(
         parseResult.GetValue(targetIdOption),
         parseResult.GetValue(dryRunOption)

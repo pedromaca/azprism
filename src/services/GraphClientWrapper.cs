@@ -16,6 +16,30 @@ public class GraphClientWrapper : IGraphClientWrapper
     }
 
     /// <summary>
+    /// Check if the service principal has the necessary permissions.
+    /// </summary>
+    public async Task<List<AppRoleAssignment>> GetAppRoleAssignments(Guid principalId)
+    {
+        // Fetch the service principal by AppId to get its ObjectId
+        var principal = await _graphServiceClient.ServicePrincipalsWithAppId(principalId.ToString()).GetAsync();
+        if (principal == null)
+        {
+            _logger.LogError($"Service principal with AppId {principalId} not found.");
+            return new List<AppRoleAssignment>();
+        }
+        
+        var objectId = principal.Id;
+        var appRoleAssignments = await _graphServiceClient.ServicePrincipals[objectId].AppRoleAssignments.GetAsync();
+        if (appRoleAssignments?.Value == null)
+        {
+            _logger.LogError($"No AppRole assignments found for principal with ObjectId {objectId}.");
+            return new List<AppRoleAssignment>();
+        }
+
+        return appRoleAssignments.Value;
+    }
+    
+    /// <summary>
     /// Adds the specified principals to the target application.
     /// </summary>
     public async Task AddAppRoleAssignmentsAsync(List<AppRoleAssignment> appRoleAssignmentRequestBodies, Guid targetObjectId)

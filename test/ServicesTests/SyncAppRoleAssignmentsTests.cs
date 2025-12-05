@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
 using Moq;
-using azprism.Services;
+using Azprism.Services;
 
 namespace AzprismTests.ServicesTests;
 
@@ -18,6 +18,7 @@ public class SyncAppRoleAssignmentsServiceTests
         // Arrange
         var logger = new Mock<ILogger<SyncAppRoleAssignmentsService>>();
         var graphClientWrapper = new Mock<IGraphClientWrapper>();
+        var appRoleMapping = new Mock<IAppRoleAssignmentMapping>();
 
         // original has principal A, target has principal B -> will cause one add and one remove
         var originalAssignments = new List<AppRoleAssignment>
@@ -44,7 +45,7 @@ public class SyncAppRoleAssignmentsServiceTests
             .Setup(g => g.GetAllAssignmentsAsync(targetObjectId))
             .ReturnsAsync(targetAssignments);
 
-        graphClientWrapper
+        appRoleMapping
             .Setup(g => g.AppRoleAssignmentMappingAsync(originalObjectId, targetObjectId))
             .ReturnsAsync(new Dictionary<Guid, Guid>());
 
@@ -64,7 +65,7 @@ public class SyncAppRoleAssignmentsServiceTests
         var loggerForCompare = new Mock<ILogger<ComparePrincipalsService>>();
 
         var compareService = new ComparePrincipalsService(loggerForCompare.Object);
-        var appRoleBuilder = new AppRoleAssignmentBuilderService(graphClientWrapper.Object);
+        var appRoleBuilder = new AppRoleAssignmentBuilderService(appRoleMapping.Object);
 
         var addService = new AddPrincipalsService(loggerForAdd.Object, graphClientWrapper.Object, compareService, appRoleBuilder);
         var removeService = new RemoveRedundantPrincipalsService(loggerForRemove.Object, graphClientWrapper.Object, compareService);
@@ -87,6 +88,7 @@ public class SyncAppRoleAssignmentsServiceTests
         // Arrange
         var logger = new Mock<ILogger<SyncAppRoleAssignmentsService>>();
         var graphClientWrapper = new Mock<IGraphClientWrapper>();
+        var appRoleMapping = new Mock<IAppRoleAssignmentMapping>();
 
         // Make the first call (from AddPrincipalsService) throw an ODataError with 403
         graphClientWrapper
@@ -98,13 +100,17 @@ public class SyncAppRoleAssignmentsServiceTests
             .Setup(g => g.RemoveAppRoleAssignmentsAsync(It.IsAny<List<AppRoleAssignment>>(), targetObjectId))
             .Returns(Task.CompletedTask)
             .Verifiable();
+        
+        appRoleMapping
+            .Setup(g => g.AppRoleAssignmentMappingAsync(originalObjectId, targetObjectId))
+            .ReturnsAsync(new Dictionary<Guid, Guid>());
 
         var loggerForAdd = new Mock<ILogger<AddPrincipalsService>>();
         var loggerForRemove = new Mock<ILogger<RemoveRedundantPrincipalsService>>();
         var loggerForCompare = new Mock<ILogger<ComparePrincipalsService>>();
 
         var compareService = new ComparePrincipalsService(loggerForCompare.Object);
-        var appRoleBuilder = new AppRoleAssignmentBuilderService(graphClientWrapper.Object);
+        var appRoleBuilder = new AppRoleAssignmentBuilderService(appRoleMapping.Object);
 
         var addService = new AddPrincipalsService(loggerForAdd.Object, graphClientWrapper.Object, compareService, appRoleBuilder);
         var removeService = new RemoveRedundantPrincipalsService(loggerForRemove.Object, graphClientWrapper.Object, compareService);

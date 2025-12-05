@@ -2,7 +2,7 @@ using System.Net;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models.ODataErrors;
 
-namespace azprism.Services;
+namespace Azprism.Services;
 
 public class SyncAppRoleAssignmentsService : ISyncAppRoleAssignmentsService
 {

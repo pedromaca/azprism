@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using Moq;
-using azprism.Services;
+using Azprism.Services;
 
 namespace AzprismTests.ServicesTests;
 
@@ -28,6 +28,7 @@ public class AddPrincipalsServiceTests
         // Arrange
         var logger = new Mock<ILogger<AddPrincipalsService>>();
         var graphClientWrapper = new Mock<IGraphClientWrapper>();
+        var appRoleMapping = new Mock<IAppRoleAssignmentMapping>();
 
         var allOriginal = new List<AppRoleAssignment> { originalAssignmentA, originalAssignmentB };
         var allTarget = new List<AppRoleAssignment> { };
@@ -43,7 +44,7 @@ public class AddPrincipalsServiceTests
         var compareLogger = new Mock<ILogger<ComparePrincipalsService>>();
         var compareService = new ComparePrincipalsService(compareLogger.Object);
 
-        var appRoleBuilder = new AppRoleAssignmentBuilderService(graphClientWrapper.Object);
+        var appRoleBuilder = new AppRoleAssignmentBuilderService(appRoleMapping.Object);
 
         var service = new AddPrincipalsService(logger.Object, graphClientWrapper.Object, compareService, appRoleBuilder);
 
@@ -62,6 +63,7 @@ public class AddPrincipalsServiceTests
         // Arrange
         var logger = new Mock<ILogger<AddPrincipalsService>>();
         var graphClientWrapper = new Mock<IGraphClientWrapper>();
+        var appRoleMapping = new Mock<IAppRoleAssignmentMapping>();
 
         var allOriginal = new List<AppRoleAssignment> { originalAssignmentA, originalAssignmentB };
         var allTarget = new List<AppRoleAssignment> { };
@@ -75,7 +77,7 @@ public class AddPrincipalsServiceTests
             .ReturnsAsync(allTarget);
 
         // AppRoleAssignmentMappingAsync used by builder - return empty mapping
-        graphClientWrapper
+        appRoleMapping
             .Setup(g => g.AppRoleAssignmentMappingAsync(originalObjectId, targetObjectId))
             .ReturnsAsync(new Dictionary<Guid, Guid>());
 
@@ -87,7 +89,7 @@ public class AddPrincipalsServiceTests
         var compareLogger = new Mock<ILogger<ComparePrincipalsService>>();
         var compareService = new ComparePrincipalsService(compareLogger.Object);
 
-        var appRoleBuilder = new AppRoleAssignmentBuilderService(graphClientWrapper.Object);
+        var appRoleBuilder = new AppRoleAssignmentBuilderService(appRoleMapping.Object);
 
         var service = new AddPrincipalsService(logger.Object, graphClientWrapper.Object, compareService, appRoleBuilder);
 
@@ -97,7 +99,7 @@ public class AddPrincipalsServiceTests
         // Assert
         graphClientWrapper.Verify(g => g.GetAllAssignmentsAsync(originalObjectId), Times.Once);
         graphClientWrapper.Verify(g => g.GetAllAssignmentsAsync(targetObjectId), Times.Once);
-        graphClientWrapper.Verify(g => g.AppRoleAssignmentMappingAsync(originalObjectId, targetObjectId), Times.Once);
+        appRoleMapping.Verify(g => g.AppRoleAssignmentMappingAsync(originalObjectId, targetObjectId), Times.Once);
         graphClientWrapper.Verify(g => g.AddAppRoleAssignmentsAsync(It.Is<List<AppRoleAssignment>>(l => l.Count == 2 && l[0].PrincipalId == originalAssignmentA.PrincipalId && l[1].PrincipalId == originalAssignmentB.PrincipalId), targetObjectId), Times.Once);
     }
 
@@ -107,6 +109,7 @@ public class AddPrincipalsServiceTests
         // Arrange
         var logger = new Mock<ILogger<AddPrincipalsService>>();
         var graphClientWrapper = new Mock<IGraphClientWrapper>();
+        var appRoleMapping = new Mock<IAppRoleAssignmentMapping>();
 
         var allOriginal = new List<AppRoleAssignment> { };
         var allTarget = new List<AppRoleAssignment> { };
@@ -127,7 +130,7 @@ public class AddPrincipalsServiceTests
         var compareLogger = new Mock<ILogger<ComparePrincipalsService>>();
         var compareService = new ComparePrincipalsService(compareLogger.Object);
 
-        var appRoleBuilder = new AppRoleAssignmentBuilderService(graphClientWrapper.Object);
+        var appRoleBuilder = new AppRoleAssignmentBuilderService(appRoleMapping.Object);
 
         var service = new AddPrincipalsService(logger.Object, graphClientWrapper.Object, compareService, appRoleBuilder);
 

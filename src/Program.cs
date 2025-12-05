@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Azure.Identity;
-using azprism.Services;
+using Azprism.Services;
 
 var missing = new List<string>();
 if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TENANT_ID"))) missing.Add("TENANT_ID");
@@ -41,6 +41,7 @@ IHost BuildHost() =>
             services.AddTransient<CheckPermissions>();
             services.AddTransient<ComparePrincipalsService>();
             services.AddTransient<AppRoleAssignmentBuilderService>();
+            services.AddTransient<IAppRoleAssignmentMapping, AppRoleAssignmentMapping>();
             services.AddTransient<IAddPrincipalsService, AddPrincipalsService>();
             services.AddTransient<IRemoveRedundantPrincipalsService, RemoveRedundantPrincipalsService>();
             services.AddTransient<ISyncAppRoleAssignmentsService, SyncAppRoleAssignmentsService>();

@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using Moq;
-using azprism.Services;
+using Azprism.Services;
 
 namespace AzprismTests.ServicesTests;
 

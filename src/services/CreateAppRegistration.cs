@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 
-namespace azprism.Services;
+namespace Azprism.Services;
 
 public class CreateAppRegistrationService
 {

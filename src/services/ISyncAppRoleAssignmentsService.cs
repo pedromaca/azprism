@@ -1,8 +1,7 @@
-namespace azprism.Services
+namespace Azprism.Services
 {
     public interface ISyncAppRoleAssignmentsService
     {
         Task SyncAppRoleAssignmentsAsync(Guid originalObjectId, Guid targetObjectId, bool dryRun = false);
     }
 }
-

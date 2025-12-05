@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace azprism.Services;
+namespace Azprism.Services;
 
 public class RemoveRedundantPrincipalsService : IRemoveRedundantPrincipalsService
 {

@@ -1,18 +1,19 @@
 using Microsoft.Graph.Models;
 
-namespace azprism.Services;
+namespace Azprism.Services;
 
 public class AppRoleAssignmentBuilderService
 {
-    private readonly IGraphClientWrapper _graphClientWrapper;
-    public AppRoleAssignmentBuilderService(IGraphClientWrapper graphClientWrapper)
+    private readonly IAppRoleAssignmentMapping _appRoleAssignmentMapping;
+    public AppRoleAssignmentBuilderService(IAppRoleAssignmentMapping appRoleAssignmentMapping)
     {
-        _graphClientWrapper = graphClientWrapper;
+        _appRoleAssignmentMapping = appRoleAssignmentMapping;
     }
+    
     public async Task<List<AppRoleAssignment>> BuildAppRoleAssignment(List<AppRoleAssignment> principalsToAdd, Guid originalObjectId, Guid targetObjectId)
     {
         // Initialize the AppRole mappings using the dedicated service
-        var appRoleIdMappings = await _graphClientWrapper.AppRoleAssignmentMappingAsync(originalObjectId, targetObjectId);
+        var appRoleIdMappings = await _appRoleAssignmentMapping.AppRoleAssignmentMappingAsync(originalObjectId, targetObjectId);
 
         // Will hold the final request bodies
         var appRoleAssignmentRequestBodies = new List<AppRoleAssignment>();
@@ -20,7 +21,7 @@ public class AppRoleAssignmentBuilderService
         foreach (var assignment in principalsToAdd)
         {
             // targetAppRoleId is the AppRoleId to be assigned to the principal
-            Guid targetAppRoleId = Guid.Empty;
+            var targetAppRoleId = Guid.Empty;
             
             // If the AppRoleId is found in the mappings, use the mapped id. Otherwise, use empty Guid
             if (assignment.AppRoleId != null && appRoleIdMappings.TryGetValue(assignment.AppRoleId.Value, out var mappedId))

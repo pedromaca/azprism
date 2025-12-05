@@ -1,4 +1,4 @@
-namespace azprism.Services
+namespace Azprism.Services
 {
     public interface IAddPrincipalsService
     {

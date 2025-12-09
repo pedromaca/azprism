@@ -38,15 +38,19 @@ IHost BuildHost() =>
                     s.SingleLine = true;
                 }));
             services.AddSingleton<IGraphClientWrapper, GraphClientWrapper>();
-            services.AddTransient<CheckPermissions>();
-            services.AddTransient<ComparePrincipalsService>();
-            services.AddTransient<AppRoleAssignmentBuilderService>();
+            services.AddTransient<ICheckPermissions, CheckPermissions>();
+            services.AddTransient<IComparePrincipals, ComparePrincipalsService>();
+            services.AddTransient<IAppRoleAssignmentBuilder, AppRoleAssignmentBuilderService>();
             services.AddTransient<IAppRoleAssignmentMapping, AppRoleAssignmentMapping>();
             services.AddTransient<IAddPrincipalsService, AddPrincipalsService>();
             services.AddTransient<IRemoveRedundantPrincipalsService, RemoveRedundantPrincipalsService>();
             services.AddTransient<ISyncAppRoleAssignmentsService, SyncAppRoleAssignmentsService>();
             services.AddTransient<IResetPrincipalsService, ResetPrincipalsService>();
             services.AddTransient<CreateAppRegistrationService>();
+        })
+        .ConfigureLogging(logging =>
+        {
+            logging.AddFilter("Microsoft", LogLevel.Warning);
         })
         .Build();
 
@@ -77,13 +81,13 @@ var displayNameOption = new Option<string>("--display-name") {
 };
     
 var dryRunOption = new Option<bool>("--dry-run") {
-    Description = "Perform a dry run without making changes",
+    Description = "Perform a dry run without making changes (default: false)",
     Required = false,
     DefaultValueFactory = _ => false
 };
 
 // Ensure SP has necessary permissions
-var checkPermissionsService = host.Services.GetRequiredService<CheckPermissions>();
+var checkPermissionsService = host.Services.GetRequiredService<ICheckPermissions>();
 if (string.IsNullOrWhiteSpace(clientId)) return 1; 
 var hasPermissions = await checkPermissionsService.PrincipalHasPermissions(Guid.Parse(clientId));
 

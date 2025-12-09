@@ -3,7 +3,7 @@ using Microsoft.Graph.Models;
 
 namespace Azprism.Services;
 
-public class CheckPermissions
+public class CheckPermissions : ICheckPermissions
 {
     private readonly ILogger<CheckPermissions> _logger;
     private readonly IGraphClientWrapper _graphClientWrapper;

@@ -6,19 +6,19 @@ public class AddPrincipalsService : IAddPrincipalsService
 {
     private readonly ILogger<AddPrincipalsService> _logger;
     private readonly IGraphClientWrapper _graphClientWrapper;
-    private readonly ComparePrincipalsService _comparePrincipalsService;
-    private readonly AppRoleAssignmentBuilderService _appRoleAssignmentBuilderService;
+    private readonly IComparePrincipals _comparePrincipals;
+    private readonly IAppRoleAssignmentBuilder _appRoleAssignmentBuilder;
 
     public AddPrincipalsService(
         ILogger<AddPrincipalsService> logger,
         IGraphClientWrapper graphClientWrapper, 
-        ComparePrincipalsService comparePrincipalsService,
-        AppRoleAssignmentBuilderService appRoleAssignmentBuilderService)
+        IComparePrincipals comparePrincipals,
+        IAppRoleAssignmentBuilder appRoleAssignmentBuilder)
     {
         _graphClientWrapper = graphClientWrapper;
         _logger = logger;
-        _comparePrincipalsService = comparePrincipalsService;
-        _appRoleAssignmentBuilderService = appRoleAssignmentBuilderService;
+        _comparePrincipals = comparePrincipals;
+        _appRoleAssignmentBuilder = appRoleAssignmentBuilder;
     }
 
     /// <summary>
@@ -31,7 +31,7 @@ public class AddPrincipalsService : IAddPrincipalsService
         var targetAssignments = await _graphClientWrapper.GetAllAssignmentsAsync(targetObjectId);
 
         // Compare principals to identify which ones need to be added
-        var (_, principalsToAdd) = _comparePrincipalsService.ComparePrincipals(originalAssignments, targetAssignments);
+        var (_, principalsToAdd) = _comparePrincipals.ComparePrincipals(originalAssignments, targetAssignments);
 
         _logger.LogInformation($"{(dryRun ? "[DRY RUN] " : "")}azprism will add {principalsToAdd.Count} principals.");
 
@@ -40,7 +40,7 @@ public class AddPrincipalsService : IAddPrincipalsService
         if (principalsToAdd.Count == 0) return;
 
         // Determine appRoleAssignment request bodies
-        var appRoleAssignmentRequestBodies = await _appRoleAssignmentBuilderService.BuildAppRoleAssignment(principalsToAdd, originalObjectId, targetObjectId);
+        var appRoleAssignmentRequestBodies = await _appRoleAssignmentBuilder.BuildAppRoleAssignment(principalsToAdd, originalObjectId, targetObjectId);
 
         // Add the missing principals
         await _graphClientWrapper.AddAppRoleAssignmentsAsync(appRoleAssignmentRequestBodies, targetObjectId);

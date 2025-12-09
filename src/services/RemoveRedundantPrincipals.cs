@@ -6,13 +6,13 @@ public class RemoveRedundantPrincipalsService : IRemoveRedundantPrincipalsServic
 {
     private readonly ILogger<RemoveRedundantPrincipalsService> _logger;
     private readonly IGraphClientWrapper _graphClientWrapper;
-    private readonly ComparePrincipalsService _comparePrincipalsService;
+    private readonly IComparePrincipals _comparePrincipals;
 
-    public RemoveRedundantPrincipalsService(ILogger<RemoveRedundantPrincipalsService> logger, IGraphClientWrapper graphClientWrapper, ComparePrincipalsService comparePrincipalsService)
+    public RemoveRedundantPrincipalsService(ILogger<RemoveRedundantPrincipalsService> logger, IGraphClientWrapper graphClientWrapper, IComparePrincipals comparePrincipals)
     {
         _logger = logger;
         _graphClientWrapper = graphClientWrapper;
-        _comparePrincipalsService = comparePrincipalsService;
+        _comparePrincipals = comparePrincipals;
     }
 
     /// <summary>
@@ -25,7 +25,7 @@ public class RemoveRedundantPrincipalsService : IRemoveRedundantPrincipalsServic
         var targetAssignments = await _graphClientWrapper.GetAllAssignmentsAsync(targetObjectId);
 
         // Compare principals to identify which ones need to be removed
-        var (principalsToRemove, _) = _comparePrincipalsService.ComparePrincipals(originalAssignments, targetAssignments);
+        var (principalsToRemove, _) = _comparePrincipals.ComparePrincipals(originalAssignments, targetAssignments);
 
         _logger.LogInformation($"{(dryRun ? "[DRY RUN] " : "")}azprism will remove {principalsToRemove.Count} principals.");
 

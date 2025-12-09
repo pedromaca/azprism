@@ -2,7 +2,7 @@ using Microsoft.Graph.Models;
 
 namespace Azprism.Services;
 
-public class AppRoleAssignmentBuilderService
+public class AppRoleAssignmentBuilderService : IAppRoleAssignmentBuilder
 {
     private readonly IAppRoleAssignmentMapping _appRoleAssignmentMapping;
     public AppRoleAssignmentBuilderService(IAppRoleAssignmentMapping appRoleAssignmentMapping)

@@ -3,7 +3,7 @@ using Microsoft.Graph.Models;
 
 namespace Azprism.Services;
 
-public class ComparePrincipalsService
+public class ComparePrincipalsService : IComparePrincipals
 {
     private readonly ILogger<ComparePrincipalsService> _logger;
     public ComparePrincipalsService(ILogger<ComparePrincipalsService> logger)

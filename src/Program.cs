@@ -2,35 +2,25 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Graph;
-using Azure.Identity;
 using Azprism.Services;
 
-var missing = new List<string>();
-if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("TENANT_ID"))) missing.Add("TENANT_ID");
-if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CLIENT_ID"))) missing.Add("CLIENT_ID");
-if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("CLIENT_SECRET"))) missing.Add("CLIENT_SECRET");
-
-if (missing.Count > 0) { 
-	Console.Error.WriteLine("Missing required environment variables: " + string.Join(", ", missing)); 
-	return 1;
+// Initialize Graph client with validation
+var clientResult = await GraphClientFactory.CreateAsync();
+if (!clientResult.Success)
+{
+    Console.Error.WriteLine(clientResult.ErrorMessage);
+    return 1;
 }
 
-var clientId = Environment.GetEnvironmentVariable("CLIENT_ID");
+var graphClient = clientResult.Client!;
+var clientId = clientResult.ClientId;
 
 // Host builder function
 IHost BuildHost() =>
     Host.CreateDefaultBuilder(args)
         .ConfigureServices((services) =>
         {
-            services.AddSingleton(_ => {
-                var tenantId = Environment.GetEnvironmentVariable("TENANT_ID");
-                var clientSecret = Environment.GetEnvironmentVariable("CLIENT_SECRET");
-                var credentials = new ClientSecretCredential(tenantId, clientId, clientSecret);
-                string[] scopes = ["https://graph.microsoft.com/.default"];
-                return new GraphServiceClient(credentials, scopes);
-            });
-
+            services.AddSingleton(_ => graphClient);
             services.AddLogging(options => 
                 options.AddSimpleConsole(s => {
                     s.UseUtcTimestamp = true;
@@ -88,8 +78,7 @@ var dryRunOption = new Option<bool>("--dry-run") {
 
 // Ensure SP has necessary permissions
 var checkPermissionsService = host.Services.GetRequiredService<ICheckPermissions>();
-if (string.IsNullOrWhiteSpace(clientId)) return 1; 
-var hasPermissions = await checkPermissionsService.PrincipalHasPermissions(Guid.Parse(clientId));
+var hasPermissions = await checkPermissionsService.PrincipalHasPermissions(clientId);
 
 // PrincipalsAddCommand
 principalsAddCommand.Options.Add(originalIdOption);

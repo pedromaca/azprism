@@ -2,6 +2,8 @@ using System.CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Azprism.Commands.AppRegistrations;
+using Azprism.Commands.Principals;
 using Azprism.Services;
 
 // Initialize Graph client with validation
@@ -11,9 +13,7 @@ if (!clientResult.Success)
     Console.Error.WriteLine(clientResult.ErrorMessage);
     return 1;
 }
-
 var graphClient = clientResult.Client!;
-var clientId = clientResult.ClientId;
 
 // Host builder function
 IHost BuildHost() =>
@@ -46,115 +46,16 @@ IHost BuildHost() =>
 
 var host = BuildHost();
 
+// Ensure SP has necessary permissions
+var checkService = host.Services.GetRequiredService<ICheckPermissions>();
+async Task<bool> PermissionCheck() => await checkService.PrincipalHasPermissions(clientResult.ClientId);
+
+// Register root command
 var rootCommand = new RootCommand("Azure Principal Sync Mechanism (Azprism)");
 
-var principalsCommand = new Command("principals", "Manage principal assignments");
-var principalsAddCommand = new Command("add", "Add missing principals from original to target");
-var principalsRemoveCommand = new Command("remove", "Remove principals from target which are not in original");
-var principalsSyncCommand = new Command("sync", "Synchronize adds missing principals from original to target and removes principals from target which are not in original");
-var principalsResetCommand = new Command("reset", "Remove all principals from the target");
-
-// CLI Flags
-var originalIdOption = new Option<Guid>("--original-id") {
-    Description = "The original object ID to sync from", 
-    Required = true 
-};
-
-var targetIdOption = new Option<Guid>("--target-id") {
-    Description = "The target object ID to sync to",
-    Required = true 
-};
-    
-var displayNameOption = new Option<string>("--display-name") {
-    Description = "The display name for the app registration",
-    Required = true
-};
-    
-var dryRunOption = new Option<bool>("--dry-run") {
-    Description = "Perform a dry run without making changes (default: false)",
-    Required = false,
-    DefaultValueFactory = _ => false
-};
-
-// Ensure SP has necessary permissions
-var checkPermissionsService = host.Services.GetRequiredService<ICheckPermissions>();
-var hasPermissions = await checkPermissionsService.PrincipalHasPermissions(clientId);
-
-// PrincipalsAddCommand
-principalsAddCommand.Options.Add(originalIdOption);
-principalsAddCommand.Options.Add(targetIdOption);
-principalsAddCommand.Options.Add(dryRunOption);
-principalsCommand.Subcommands.Add(principalsAddCommand);
-principalsAddCommand.SetAction(async parseResult => {
-    if (!hasPermissions) return;
-    var addService = host.Services.GetRequiredService<IAddPrincipalsService>();
-    await addService.AddPrincipalsAsync(
-        parseResult.GetValue(originalIdOption),
-        parseResult.GetValue(targetIdOption),
-        parseResult.GetValue(dryRunOption)
-    );
-});
-
-// PrincipalsRemoveCommand options
-principalsRemoveCommand.Options.Add(originalIdOption);
-principalsRemoveCommand.Options.Add(targetIdOption);
-principalsRemoveCommand.Options.Add(dryRunOption);
-principalsCommand.Subcommands.Add(principalsRemoveCommand);
-principalsRemoveCommand.SetAction(async parseResult => {
-    if (!hasPermissions) return;
-    var removeService = host.Services.GetRequiredService<IRemoveRedundantPrincipalsService>();
-    await removeService.RemoveRedundantPrincipalsAsync(
-        parseResult.GetValue(originalIdOption),
-        parseResult.GetValue(targetIdOption),
-        parseResult.GetValue(dryRunOption)
-    );
-});
-
-// PrincipalsSyncCommand options
-principalsSyncCommand.Options.Add(originalIdOption);
-principalsSyncCommand.Options.Add(targetIdOption);
-principalsSyncCommand.Options.Add(dryRunOption);
-principalsCommand.Subcommands.Add(principalsSyncCommand);
-principalsSyncCommand.SetAction(async parseResult => {
-    if (!hasPermissions) return;
-    var syncService = host.Services.GetRequiredService<ISyncAppRoleAssignmentsService>();
-    await syncService.SyncAppRoleAssignmentsAsync(
-        parseResult.GetValue(originalIdOption),
-        parseResult.GetValue(targetIdOption),
-        parseResult.GetValue(dryRunOption)
-    );
-});
-
-// PrincipalsResetCommand options
-principalsResetCommand.Options.Add(targetIdOption);
-principalsResetCommand.Options.Add(dryRunOption);
-principalsCommand.Subcommands.Add(principalsResetCommand);
-principalsResetCommand.SetAction(async parseResult => {
-    if (!hasPermissions) return;
-    var resetService = host.Services.GetRequiredService<IResetPrincipalsService>();
-    await resetService.ResetPrincipalsAsync(
-        parseResult.GetValue(targetIdOption),
-        parseResult.GetValue(dryRunOption)
-    );
-});
-
-// appRegistrationCommand
-var appRegistrationCommand = new Command("appRegistration", "Manage app registrations");
-var appRegistrationCreateCommand = new Command("create", "Create a new app registration with the specified display name");
-appRegistrationCreateCommand.Options.Add(displayNameOption);
-appRegistrationCreateCommand.Options.Add(dryRunOption);
-appRegistrationCommand.Subcommands.Add(appRegistrationCreateCommand);
-appRegistrationCreateCommand.SetAction(async parseResult => {
-    var createService = host.Services.GetRequiredService<CreateAppRegistrationService>();
-    await createService.CreateAppRegistrationAsync(
-        parseResult.GetValue(displayNameOption) ?? throw new ArgumentException("Display name is required"),
-        parseResult.GetValue(dryRunOption)
-    );
-});
-
-// Attach subcommands to root command
-rootCommand.Subcommands.Add(principalsCommand);
-rootCommand.Subcommands.Add(appRegistrationCommand);
+// Register command modules
+rootCommand.Subcommands.Add(new PrincipalsCommandModule(host.Services, PermissionCheck).BuildCommand());
+rootCommand.Subcommands.Add(new AppRegistrationsCommandModule(host.Services).BuildCommand());
 
 // start host so logging providers are active
 await host.StartAsync();
@@ -165,5 +66,4 @@ var exitCode = await rootCommand.Parse(args).InvokeAsync();
 // stop host (this lets logging providers flush) and dispose
 await host.StopAsync();
 await host.WaitForShutdownAsync();
-
 return exitCode;
